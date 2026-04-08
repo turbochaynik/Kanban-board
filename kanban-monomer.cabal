@@ -1,0 +1,56 @@
+cabal-version: 3.0
+name:          kanban-monomer
+version:       0.1.0.0
+synopsis:      A simple Kanban board GUI using the Monomer library
+description:   This project implements a Kanban board with a graphical user interface,
+               allowing users to manage tasks across "To Do", "In Progress", and "Done" columns.
+               It demonstrates the use of the Monomer GUI framework in Haskell.
+homepage:      https://github.com/yourusername/kanban-monomer#readme
+license:       BSD-3-Clause
+-- license-file:  LICENSE
+author:        Your Name
+maintainer:    your.email@example.com
+category:      GUI
+build-type:    Simple
+
+common common-options
+  default-language:   Haskell2010
+  default-extensions:
+    OverloadedStrings
+    , RecordWildCards
+    , NamedFieldPuns
+    , TemplateHaskell
+    , FlexibleContexts
+  build-depends:
+    base >=4.14 && <5
+    , text
+    , time
+    , containers
+    , mtl
+    , lens
+    , template-haskell
+    , monomer
+    , aeson
+    , bytestring
+    , directory
+  ghc-options:
+    -Wall -Wcompat -Widentities -Wincomplete-record-updates
+    -Wincomplete-uni-patterns -Wmissing-export-lists -Wpartial-fields
+    -Wredundant-constraints -fno-warn-unused-top-binds
+
+library
+  import:          common-options
+  hs-source-dirs:  src
+  exposed-modules:
+    Model
+    , Update
+    , View
+  -- build-depends не нужен, все зависимости берутся из common-options
+
+executable kanban-monomer
+  import:         common-options
+  main-is:        Main.hs
+  hs-source-dirs: app
+  build-depends:
+    kanban-monomer
+  -- остальные зависимости уже есть в common-options

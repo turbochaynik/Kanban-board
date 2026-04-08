@@ -1,0 +1,7 @@
+packages: .
+
+package monomer
+  flags: +nanovg
+
+package *
+  ghc-options: -threaded

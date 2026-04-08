@@ -1,0 +1,11 @@
+dist/
+dist-newstyle/
+*.o
+*.hi
+*.dyn_o
+*.dyn_hi
+*.swp
+*~
+.ghc.environment.*
+.stack-work/
+kanban.json
