@@ -73,6 +73,8 @@ data NewTaskData = NewTaskData
   { _newTitle :: Text
   , _newDesc  :: Text
   , _newType  :: TaskType
+  , _newTags     :: Text
+  , _newAssignee :: Text
   } deriving (Eq, Show, Generic)
 
 makeLenses ''NewTaskData
@@ -84,6 +86,8 @@ data AppModel = AppModel
   { _appBoard          :: KanbanBoard
   , _newTaskForm       :: NewTaskData
   , _showNewTaskDialog :: Bool
+  , _selectedTask      :: Maybe Task  
+  , _editingTaskId :: Maybe TaskId
   } deriving (Eq, Show, Generic)
 
 makeLenses ''AppModel
@@ -92,7 +96,7 @@ instance ToJSON AppModel
 instance FromJSON AppModel
 
 emptyNewTaskData :: NewTaskData
-emptyNewTaskData = NewTaskData "" "" Bug
+emptyNewTaskData = NewTaskData "" "" Bug "" ""
 
 initialModel :: AppModel
 initialModel = AppModel
@@ -103,4 +107,6 @@ initialModel = AppModel
       }
   , _newTaskForm = emptyNewTaskData
   , _showNewTaskDialog = False
+  , _selectedTask = Nothing
+  , _editingTaskId = Nothing
   }
