@@ -8,6 +8,8 @@ import Data.Text (Text)
 import Data.Aeson (encode)
 import qualified Data.ByteString.Lazy as BS
 import Control.Monad.IO.Class (liftIO)
+import Data.Text (splitOn, strip)
+import qualified Data.Text as T
 
 saveModel :: AppModel -> IO ()
 saveModel model = BS.writeFile "kanban.json" (encode model)
@@ -21,8 +23,14 @@ data AppEvent
   | UpdateNewTitle Text
   | UpdateNewDesc Text
   | UpdateNewType TaskType
+  | UpdateNewTags Text
+  | UpdateNewAssignee Text
   | SaveNewTask
   | SaveToFile
+  | SelectTask Task
+  | CloseTaskDetails
+  | EditTask Task
+  | SaveEditedTask
   deriving (Show)
 
 handleEvent
@@ -42,6 +50,12 @@ handleEvent _ _ model = \case
 
   OpenNewTaskDialog ->
     [Model $ model & newTaskForm .~ emptyNewTaskData & showNewTaskDialog .~ True]
+    
+  SelectTask task ->
+    [Model $ model & selectedTask .~ Just task]
+
+  CloseTaskDetails ->
+    [Model $ model & selectedTask .~ Nothing]
 
   CloseDialog ->
     [Model $ model & showNewTaskDialog .~ False]
@@ -54,22 +68,114 @@ handleEvent _ _ model = \case
 
   UpdateNewType tp ->
     [Model $ model & newTaskForm . newType .~ tp]
+    
+  UpdateNewTags t ->
+    [Model $ model & newTaskForm . newTags .~ t]
 
+  UpdateNewAssignee a ->
+    [Model $ model & newTaskForm . newAssignee .~ a]
+    
+  EditTask task ->
+    [ Model $
+        model
+          & newTaskForm .~ NewTaskData
+              { _newTitle = taskTitle task
+              , _newDesc  = taskDesc task
+              , _newType  = taskType task
+              , _newTags  = tagsToText (taskTags task)
+              , _newAssignee =
+                  maybe "" userName (taskAssignee task)
+              }
+          & editingTaskId .~ Just (taskId task)
+          & showNewTaskDialog .~ True
+    ]
+  
+  
   SaveNewTask ->
-    let form = model ^. newTaskForm
-        board = model ^. appBoard
-        newId = nextTaskId board
-        newTask = Model.Task
-          { taskId       = newId
-          , taskTitle    = form ^. newTitle
-          , taskDesc     = form ^. newDesc
-          , taskDeadline = Nothing
-          , taskType     = form ^. newType
-          , taskTags     = []
-          , taskAssignee = Nothing
-          }
-        newBoard = board { boardTodos = newTask : boardTodos board }
-    in [Model $ model & appBoard .~ newBoard & showNewTaskDialog .~ False]
+    case model ^. editingTaskId of
+
+    -- =========================================
+    -- ✏️ РЕДАКТИРОВАНИЕ
+    -- =========================================
+      Just tid ->
+        let
+          form  = model ^. newTaskForm
+          board = model ^. appBoard
+
+          tagsList =
+            if form ^. newTags == ""
+              then []
+              else map (Tag . strip) (splitOnComma (form ^. newTags))
+
+          assigneeVal =
+            if form ^. newAssignee == ""
+              then Nothing
+              else Just (User (form ^. newAssignee))
+
+          updateTask t =
+            if taskId t == tid
+              then t
+                { taskTitle    = form ^. newTitle
+                , taskDesc     = form ^. newDesc
+                , taskType     = form ^. newType
+                , taskTags     = tagsList
+                , taskAssignee = assigneeVal
+                }
+              else t
+
+          newBoard = board
+            { boardTodos      = map updateTask (boardTodos board)
+            , boardInProgress = map updateTask (boardInProgress board)
+            , boardDones      = map updateTask (boardDones board)
+            }
+
+        in
+          [ Model $
+              model
+                & appBoard .~ newBoard
+                & showNewTaskDialog .~ False
+                & editingTaskId .~ Nothing
+          ]
+
+
+    -- =========================================
+    -- 🆕 СОЗДАНИЕ
+    -- =========================================
+      Nothing ->
+        let
+          form  = model ^. newTaskForm
+          board = model ^. appBoard
+          newId = nextTaskId board
+
+          tagsList =
+            if form ^. newTags == ""
+              then []
+              else map (Tag . strip) (splitOnComma (form ^. newTags))
+
+          assigneeVal =
+            if form ^. newAssignee == ""
+              then Nothing
+              else Just (User (form ^. newAssignee))
+ 
+          newTask = Model.Task
+            { taskId       = newId
+            , taskTitle    = form ^. newTitle
+            , taskDesc     = form ^. newDesc
+            , taskDeadline = Nothing
+            , taskType     = form ^. newType
+            , taskTags     = tagsList
+            , taskAssignee = assigneeVal
+            }
+
+          newBoard =
+            board { boardTodos = newTask : boardTodos board }
+
+        in
+          [ Model $
+              model
+                & appBoard .~ newBoard
+                & showNewTaskDialog .~ False
+          ]
 
   SaveToFile ->
     [Monomer.Task $ liftIO (saveModel model) >> return AppInit]
@@ -123,3 +229,10 @@ deleteTaskById tid board =
         , boardInProgress = filter ((/= tid) . taskId) (boardInProgress board)
         , boardDones      = filter ((/= tid) . taskId) (boardDones board)
         }
+
+splitOnComma :: Text -> [Text]
+splitOnComma = splitOn ","
+
+tagsToText :: [Tag] -> Text
+tagsToText tags =
+  T.intercalate "," (map tagName tags)
