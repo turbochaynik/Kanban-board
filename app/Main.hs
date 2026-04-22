@@ -43,6 +43,7 @@ main = do
 config :: [AppConfig AppModel AppEvent]
 config =
   [ appWindowTitle "Kanban Board"
+  , appFontDef "Regular" "/System/Library/Fonts/Helvetica.ttc"
   , appTheme darkTheme
   , appInitEvent AppInit
   , appWindowResizable True
