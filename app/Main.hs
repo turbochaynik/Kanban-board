@@ -1,29 +1,35 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE FlexibleContexts #-}
-module Main where
 
+module Main
+  ( main
+  ) where
+
+import Data.Aeson (decode)
+import qualified Data.ByteString.Lazy as BS
+import Monomer
+import System.Directory (doesFileExist)
 import Model
 import Update
 import View
 
-import Monomer
-import Data.Aeson (decode)
-import qualified Data.ByteString.Lazy as BS
-import System.Directory (doesFileExist)
-
+-- | File path used for storing board state.
 saveFilePath :: FilePath
 saveFilePath = "kanban.json"
 
+-- | Load saved model from file if it exists and can be decoded.
 loadModel :: IO AppModel
 loadModel = do
-  exists <- doesFileExist saveFilePath
-  if exists
+  fileExists <- doesFileExist saveFilePath
+  if fileExists
     then do
       content <- BS.readFile saveFilePath
       case decode content of
-        Just model -> return model
-        Nothing    -> return initialModel
-    else return initialModel
+        Just model -> pure model
+        Nothing -> pure initialModel
+    else pure initialModel
 
+-- | Application entry point.
 main :: IO ()
 main = do
   model <- loadModel
@@ -33,12 +39,11 @@ main = do
     buildUI
     config
 
+-- | Monomer application configuration.
 config :: [AppConfig AppModel AppEvent]
 config =
   [ appWindowTitle "Kanban Board"
-  , appWindowIcon ""
   , appTheme darkTheme
-  , appFontDef "Regular" "/System/Library/Fonts/Helvetica.ttc"
   , appInitEvent AppInit
   , appWindowResizable True
   , appWindowState MainWindowMaximized
